@@ -4,10 +4,10 @@ from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 
-folder_path = './files'
+folder_path = './Generated_Files'
 output_path = './output'
 output_file = '_output.xlsx'
-course_code = []
+course_code =['CSPC601', 'CSPC602', 'CSPC603', 'CSPC604', 'CSPC605', 'CSPC606']
 file_list = os.listdir(folder_path)
 excel_files = [file for file in file_list if file.endswith('.xlsx') or file.endswith('.xls')]
 if not os.path.exists(output_path):
@@ -19,7 +19,7 @@ for file in excel_files:
     
 for file in excel_files:
     file_path = os.path.join(folder_path, file)
-    df = pd.read_excel(file_path, skiprows=10, header=0)
+    df = pd.read_excel(file_path)
 
     total_students = len(df)
     total_students_appeared = len(df[df['Marks'] != 'Absent'])
@@ -87,10 +87,12 @@ for idx, file in enumerate(output_files):
     data_sheet1.append([course_code[idx]] + df.iloc[0].values.tolist())
 
 columns_sheet1 = ['Course Code', 'Total Students', 'Total Students Appeared', 'Total Absent', 
-                  'Average Marks', 'Students Less than 15', 
-                  'Students Between 15 and 30', 'Students More than 30']
+                  'Average Marks', 'Students Less than 16', 
+                  'Students Between 16 and 30', 'Students More than 30']
 
-df_sheet1 = pd.DataFrame(data_sheet1, columns=columns_sheet1)
+df_sheet1_transposed = pd.DataFrame(data_sheet1, columns=columns_sheet1).T.reset_index()
+df_sheet1_transposed.columns = df_sheet1_transposed.iloc[0]
+df_sheet1_transposed = df_sheet1_transposed.drop(0)
 
 sheet2_roll_counts = {}
 sheet3_roll_counts = {}
@@ -123,11 +125,16 @@ top5_sheet3 = sorted(sheet3_roll_counts.items(), key=lambda x: x[1]['Count'], re
 df_top5_sheet2 = pd.DataFrame([(roll_no, data['Name'], data['Count']) for roll_no, data in top5_sheet2], columns=['Roll No.', 'Student Name', 'Count'])
 df_top5_sheet3 = pd.DataFrame([(roll_no, data['Name'], data['Count']) for roll_no, data in top5_sheet3], columns=['Roll No.', 'Student Name', 'Count'])
 
+top_n = int(input("Enter the count of students: "))
+
+df_top5_sheet2_count = df_top5_sheet2[df_top5_sheet2['Count'] >= top_n]
+df_top5_sheet3_count = df_top5_sheet3[df_top5_sheet3['Count'] >= top_n]
+
 output_excel_path = './combined_output_new.xlsx'
 with pd.ExcelWriter(output_excel_path) as writer:
-    df_sheet1.to_excel(writer, sheet_name='Sheet1', index=False)
-    df_top5_sheet2.to_excel(writer, sheet_name='Sheet2', index=False)
-    df_top5_sheet3.to_excel(writer, sheet_name='Sheet3', index=False)
+    df_sheet1_transposed.to_excel(writer, sheet_name='Student Summary', index=False)
+    df_top5_sheet2_count.to_excel(writer, sheet_name='Slow Learners', index=False)
+    df_top5_sheet3_count.to_excel(writer, sheet_name='Fast Learners', index=False)
 
 print("Data saved successfully to", output_excel_path)
 
