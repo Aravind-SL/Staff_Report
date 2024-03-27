@@ -7,10 +7,16 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 folder_path = './files'
 output_path = './output'
 output_file = '_output.xlsx'
+course_code = []
 file_list = os.listdir(folder_path)
 excel_files = [file for file in file_list if file.endswith('.xlsx') or file.endswith('.xls')]
 if not os.path.exists(output_path):
     os.makedirs(output_path)
+for file in excel_files:
+    file_path = os.path.join(folder_path, file)
+    df = pd.read_excel(file_path)
+    course_code.append(df.iloc[7, 3])
+    
 for file in excel_files:
     file_path = os.path.join(folder_path, file)
     df = pd.read_excel(file_path, skiprows=10, header=0)
@@ -19,8 +25,8 @@ for file in excel_files:
     total_students_appeared = len(df[df['Marks'] != 'Absent'])
     total_absent = total_students - total_students_appeared
     avg_marks = df[df['Marks'] != 'Absent']['Marks'].astype(float).mean()
-    less_than_15 = len(df[df['Marks'].astype(float) < 15])
-    between_15_and_30 = len(df[(df['Marks'].astype(float) > 15) & (df['Marks'].astype(float) <= 30)])
+    less_than_16 = len(df[df['Marks'].astype(float) < 16])
+    between_16_and_30 = len(df[(df['Marks'].astype(float) >= 16) & (df['Marks'].astype(float) <= 30)])
     more_than_30 = len(df[df['Marks'].astype(float) > 30])
 
     results = [{
@@ -28,8 +34,8 @@ for file in excel_files:
         'Total Students Appeared': total_students_appeared,
         'Total Absent': total_absent,
         'Average Marks': avg_marks,
-        'Students Less than 15': less_than_15,
-        'Students Between 15 and 30': between_15_and_30,
+        'Students Less than 15': less_than_16,
+        'Students Between 15 and 30': between_16_and_30,
         'Students More than 30': more_than_30
     }]
     results_df = pd.DataFrame(results)
@@ -75,12 +81,12 @@ output_folder_path = './output'
 output_files = [file for file in os.listdir(output_folder_path) if file.endswith('.xlsx')]
 
 data_sheet1 = []
-for file in output_files:
+for idx, file in enumerate(output_files):
     file_path = os.path.join(output_folder_path, file)
     df = pd.read_excel(file_path, sheet_name='Sheet1', header=0)
-    data_sheet1.append([file[:10]] + df.iloc[0].values.tolist())
+    data_sheet1.append([course_code[idx]] + df.iloc[0].values.tolist())
 
-columns_sheet1 = ['File Name', 'Total Students', 'Total Students Appeared', 'Total Absent', 
+columns_sheet1 = ['Course Code', 'Total Students', 'Total Students Appeared', 'Total Absent', 
                   'Average Marks', 'Students Less than 15', 
                   'Students Between 15 and 30', 'Students More than 30']
 
