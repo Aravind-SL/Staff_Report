@@ -2,37 +2,41 @@ import os
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
-
+import xlsxwriter
 
 # folder_path = './Generated_Files'
 folder_path = './files'
 output_path = './output'
 output_file = '_output.xlsx'
+
 # course_code =['CSPC601', 'CSPC602', 'CSPC603', 'CSPC604', 'CSPC605', 'CSPC606']
+
 course_code = []
 marks = []
+
 file_list = os.listdir(folder_path)
-
 excel_files = [file for file in file_list if file.endswith('.xlsx') or file.endswith('.xls')]
-
 if not os.path.exists(output_path):
     os.makedirs(output_path)
+    
 for file in excel_files:
     file_path = os.path.join(folder_path, file)
     df = pd.read_excel(file_path)
     course_code.append(df.iloc[7, 3])
     marks.append(df.iloc[8, 3])
-    
-# print(course_code, marks) 
+
+# Assuming 'excel_files' is a list of file names and 'folder_path' is the path to the folder containing the files
 for i, file in enumerate(excel_files):
     file_path = os.path.join(folder_path, file)
-    # df = pd.read_excel(file_path)
-    df = pd.read_excel(file_path, skiprows=10, header=0)
-    # print(marks[i])
-    # 
-    mark_40 = 16
-    mark_75 = 30
+    df = pd.read_excel(file_path, skiprows=10)  
     
+    course_detail = pd.read_excel(file_path, nrows=9, header=None)
+    course_detail = course_detail.iloc[:8, 1:].fillna('').values.tolist()
+    
+    mark_40 = marks[i]*0.4
+    mark_75 = marks[i]*0.75
+    # mark_40 = 16
+    # mark_75 = 30
     total_students = len(df)
     total_students_appeared = len(df[df['Marks'] != 'Absent'])
     total_absent = total_students - total_students_appeared
@@ -41,61 +45,86 @@ for i, file in enumerate(excel_files):
     between_16_and_30 = len(df[(df['Marks'].astype(float) >= mark_40) & (df['Marks'].astype(float) < mark_75)])
     more_than_30 = len(df[df['Marks'].astype(float) >= mark_75])
 
-    results = [{
-        'Total Students': total_students,
-        'Total Students Appeared': total_students_appeared,
-        'Total Absent': total_absent,
-        'Average Marks': avg_marks,
-        'Students Less than 16': less_than_16,
-        'Students Between 16 and 30': between_16_and_30,
-        'Students More than 30': more_than_30
-    }]
-    results_df = pd.DataFrame(results)
+    # Create a new workbook for each input file
+    output_file_name = f'Repo{os.path.splitext(file)[0]}_output.xlsx'
+    wb = xlsxwriter.Workbook(os.path.join(output_path, output_file_name))
+    ws1 = wb.add_worksheet('Student Summary')
 
-    wb = Workbook()
-    ws1 = wb.active
-    ws1.title = 'Student Summary'
+    title = "Staff Report"
+    title_range = 'A1:F2'
+    title_format = wb.add_format({'bold': True, 'font': 'Times New Roman', 'font_size': 20, 'bg_color': '#FFFF00', 'border': 2, 'align': 'center', 'valign': 'vcenter'})
+    header_format = wb.add_format({'bold': True, 'font': 'Times New Roman', 'font_size': 12, 'bg_color': '#B0E0E6', 'border': 2, 'align': 'center', 'valign': 'vcenter'})
+    cell_format = wb.add_format({'border': 2, 'align': 'center', 'valign': 'vcenter', 'bold': True})
 
+    ws1.merge_range(title_range, title, title_format)
 
-    for r in dataframe_to_rows(results_df, index=False, header=True):
-        ws1.append(r)
+    for i, detail in enumerate(course_detail):
+        ws1.write_row(i + 2, 0, detail, cell_format)
 
+    headers = ["Attribute", "Value"]
+    ws1.write_row('A13', headers, header_format)
+    ws1.set_column(0, 2, 25)
+    ws1.set_row(0, 35)
+    ws1.set_row(3, 35)
+
+    results = [
+        ["Total Students", total_students],
+        ["Total Students Appeared", total_students_appeared],
+        ["Total Absent", total_absent],
+        ["Average Marks & %", avg_marks],
+        ["Less Than 15", less_than_16],
+        ["Between 15-30", between_16_and_30],
+        ["More than 30", more_than_30]
+    ]
+    for i, (attribute, value) in enumerate(results, start=13):
+        ws1.write(i, 0, attribute, cell_format)
+        ws1.write(i, 1, value, cell_format)
 
     mark_less_than = float(input(f"Enter a mark to filter students who scored less than that mark for file {file}: "))
 
     filtered_less_than_df = df[df['Marks'].astype(float) < mark_less_than]
     filtered_less_than_df = filtered_less_than_df.sort_values(by='Marks', ascending=True)
     if 'Unnamed: 4' in filtered_less_than_df:
-        filtered_less_than_df= filtered_less_than_df.drop(['Unnamed: 4'], axis=1)
-    ws2 = wb.create_sheet('Slow Learners')
-    for r in dataframe_to_rows(filtered_less_than_df, index=False, header=True):
-        ws2.append(r)
+        filtered_less_than_df = filtered_less_than_df.drop(['Unnamed: 4'], axis=1)
+    ws2 = wb.add_worksheet('Slow Learners')
+    header_row = filtered_less_than_df.columns.tolist()
+    for col, header in enumerate(header_row):
+        ws2.write(0, col, header, header_format)
+
+    # Write data rows to the sheet
+    for row_idx, row_data in enumerate(filtered_less_than_df.values, start=1):
+        for col_idx, cell_data in enumerate(row_data):
+            ws2.write(row_idx, col_idx, cell_data)
 
     mark_more_than = float(input(f"Enter a mark to filter students who scored more than that mark for file {file}: "))
 
     filtered_more_than_df = df[df['Marks'].astype(float) > mark_more_than]
     filtered_more_than_df = filtered_more_than_df.sort_values(by='Marks', ascending=False)
     if 'Unnamed: 4' in filtered_more_than_df:
-        filtered_more_than_df= filtered_more_than_df.drop(['Unnamed: 4'], axis=1)
-    ws3 = wb.create_sheet('Fast Learners')
-    for r in dataframe_to_rows(filtered_more_than_df, index=False, header=True):
-        ws3.append(r)
+        filtered_more_than_df = filtered_more_than_df.drop(['Unnamed: 4'], axis=1)
+    ws3 = wb.add_worksheet('Fast Learners')
+    header_row = filtered_more_than_df.columns.tolist()
+    for col, header in enumerate(header_row):
+        ws3.write(0, col, header, header_format)
 
-
-    output_file_path = os.path.join(output_path, file.replace('.xlsx', '') + output_file)
-    wb.save(output_file_path)
-
-    print("Results saved successfully to:", output_file_path)
+    # Write data rows to the sheet
+    for row_idx, row_data in enumerate(filtered_more_than_df.values, start=1):
+        for col_idx, cell_data in enumerate(row_data):
+            ws3.write(row_idx, col_idx, cell_data)
+    wb.close()
+    print("Results saved successfully to:")
     
-#Task 2    
 output_folder_path = './output'
 output_files = [file for file in os.listdir(output_folder_path) if file.endswith('.xlsx')]
 
 data_sheet1 = []
 for idx, file in enumerate(output_files):
     file_path = os.path.join(output_folder_path, file)
-    df = pd.read_excel(file_path, sheet_name='Student Summary', header=0)
-    data_sheet1.append([course_code[idx]] + df.iloc[0].values.tolist())
+    df = pd.read_excel(file_path, sheet_name='Student Summary',skiprows=12, header=0)
+    df = df.drop(columns='Unnamed: 2', axis=1) if 'Unnamed: 2' in df else df
+    # print(df['Value'].values.tolist())
+    data_sheet1.append([course_code[idx]] + df['Value'].values.tolist())
+print(data_sheet1)
 
 columns_sheet1 = ['Course Code', 'Total Students', 'Total Students Appeared', 'Total Absent', 
                   'Average Marks', 'Students Less than 16', 
@@ -104,8 +133,7 @@ columns_sheet1 = ['Course Code', 'Total Students', 'Total Students Appeared', 'T
 df_sheet1_transposed = pd.DataFrame(data_sheet1, columns=columns_sheet1).T.reset_index()
 df_sheet1_transposed.columns = df_sheet1_transposed.iloc[0]
 df_sheet1_transposed = df_sheet1_transposed.drop(0)
-
-
+print(df_sheet1_transposed)
 
 sheet2_roll_counts = {}
 sheet3_roll_counts = {}
@@ -150,4 +178,3 @@ with pd.ExcelWriter(output_excel_path) as writer:
     df_consolidated_sheet3_count.to_excel(writer, sheet_name='Fast Learners', index=False)
 
 print("Data saved successfully to", output_excel_path)
-
