@@ -117,7 +117,7 @@ for i, file in enumerate(excel_files):
         for col_idx, cell_data in enumerate(row_data):
             ws3.write(row_idx, col_idx, cell_data)
     wb.close()
-    print("Results saved successfully to:")
+    print(f"Results saved successfully to: ./output/{os.path.splitext(file)[0]}_output.xlsx")
     
 output_folder_path = './output'
 output_files = [file for file in os.listdir(output_folder_path) if file.endswith('.xlsx')]
@@ -129,7 +129,7 @@ for idx, file in enumerate(output_files):
     df = df.drop(columns='Unnamed: 2', axis=1) if 'Unnamed: 2' in df else df
     # print(df['Value'].values.tolist())
     data_sheet1.append([course_code[idx]] + df['Value'].values.tolist())
-print(data_sheet1)
+# print(data_sheet1)
 
 columns_sheet1 = ['Course Code', 'Total Students', 'Total Students Appeared', 'Total Absent', 
                   'Average Marks', 'Students Less than 16', 
