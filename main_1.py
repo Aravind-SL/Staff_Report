@@ -24,11 +24,16 @@ for file in excel_files:
     df = pd.read_excel(file_path)
     course_code.append(df.iloc[7, 3])
     marks.append(df.iloc[8, 3])
+print(excel_files)
+print(marks)
 
 # Assuming 'excel_files' is a list of file names and 'folder_path' is the path to the folder containing the files
 for i, file in enumerate(excel_files):
     file_path = os.path.join(folder_path, file)
-    df = pd.read_excel(file_path, skiprows=10)  
+    df = pd.read_excel(file_path, skiprows=10) 
+    if 'Unnamed: 4' in df:
+        df = df.drop(['Unnamed: 4'], axis=1)
+    df = df.dropna()      
     
     course_detail = pd.read_excel(file_path, nrows=9, header=None)
     course_detail = course_detail.iloc[:8, 1:].fillna('').values.tolist()
@@ -46,7 +51,7 @@ for i, file in enumerate(excel_files):
     more_than_30 = len(df[df['Marks'].astype(float) >= mark_75])
 
     # Create a new workbook for each input file
-    output_file_name = f'Repo{os.path.splitext(file)[0]}_output.xlsx'
+    output_file_name = f'{os.path.splitext(file)[0]}_output.xlsx'
     wb = xlsxwriter.Workbook(os.path.join(output_path, output_file_name))
     ws1 = wb.add_worksheet('Student Summary')
 
