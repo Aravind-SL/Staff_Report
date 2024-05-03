@@ -35,20 +35,21 @@ for i, file in enumerate(excel_files):
         df = df.drop(['Unnamed: 4'], axis=1)
     df = df.dropna()      
     
-    course_detail = pd.read_excel(file_path, nrows=9, header=None)
-    course_detail = course_detail.iloc[:8, 1:].fillna('').values.tolist()
+    course_detail = pd.read_excel(file_path, nrows=10, header=None)
+    course_detail = course_detail.iloc[:10, 1:].fillna('').values.tolist()
     
     mark_40 = marks[i]*0.4
     mark_75 = marks[i]*0.75
     # mark_40 = 16
     # mark_75 = 30
     total_students = len(df)
-    total_students_appeared = len(df[df['Marks'] != 'Absent'])
+    total_students_appeared = len(df[df['Marks'] != 'A'])
     total_absent = total_students - total_students_appeared
-    avg_marks = df[df['Marks'] != 'Absent']['Marks'].astype(float).mean()
-    less_than_16 = len(df[df['Marks'].astype(float) < mark_40])
-    between_16_and_30 = len(df[(df['Marks'].astype(float) >= mark_40) & (df['Marks'].astype(float) < mark_75)])
-    more_than_30 = len(df[df['Marks'].astype(float) >= mark_75])
+    avg_marks = df[df['Marks'] != 'A']['Marks'].astype(float).mean().round(2)
+    df = df.replace('A', 0)
+    less_than_16 = len(df[df['Marks'].astype(float) < mark_40]) - total_absent
+    between_16_and_30 = len(df[(df['Marks'].astype(float) >= mark_40) & (df['Marks'].astype(float) < mark_75)]) - total_absent
+    more_than_30 = len(df[df['Marks'].astype(float) >= mark_75]) - total_absent
 
     # Create a new workbook for each input file
     output_file_name = f'{os.path.splitext(file)[0]}_output.xlsx'
@@ -76,10 +77,10 @@ for i, file in enumerate(excel_files):
         ["Total Students", total_students],
         ["Total Students Appeared", total_students_appeared],
         ["Total Absent", total_absent],
-        ["Average Marks & %", avg_marks],
-        ["Less Than 15", less_than_16],
-        ["Between 15-30", between_16_and_30],
-        ["More than 30", more_than_30]
+        ["Average Marks", avg_marks],
+        ["Less Than 40%", less_than_16],
+        ["Between 40 % - 75 %", between_16_and_30],
+        ["More than 75%", more_than_30]
     ]
     for i, (attribute, value) in enumerate(results, start=13):
         ws1.write(i, 0, attribute, cell_format)
@@ -122,18 +123,29 @@ for i, file in enumerate(excel_files):
 output_folder_path = './output'
 output_files = [file for file in os.listdir(output_folder_path) if file.endswith('.xlsx')]
 
+course_code=[]
+marks=[]
+
+for file in output_files:
+    file_path = os.path.join(output_folder_path, file)
+    df = pd.read_excel(file_path)
+    course_code.append(df.iloc[9, 2])
+    marks.append(df.iloc[10, 2])
+print(output_files)
+print(marks)
+
 data_sheet1 = []
 for idx, file in enumerate(output_files):
     file_path = os.path.join(output_folder_path, file)
     df = pd.read_excel(file_path, sheet_name='Student Summary',skiprows=12, header=0)
     df = df.drop(columns='Unnamed: 2', axis=1) if 'Unnamed: 2' in df else df
-    # print(df['Value'].values.tolist())
+    print(df['Value'].values.tolist())
     data_sheet1.append([course_code[idx]] + df['Value'].values.tolist())
 # print(data_sheet1)
 
 columns_sheet1 = ['Course Code', 'Total Students', 'Total Students Appeared', 'Total Absent', 
-                  'Average Marks', 'Students Less than 16', 
-                  'Students Between 16 and 30', 'Students More than 30']
+                  'Average Marks', 'Students Less than 40%', 
+                  'Students Between 40 %. and 75 %', 'Students More than 75%']
 
 df_sheet1_transposed = pd.DataFrame(data_sheet1, columns=columns_sheet1).T.reset_index()
 df_sheet1_transposed.columns = df_sheet1_transposed.iloc[0]
