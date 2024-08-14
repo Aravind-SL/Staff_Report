@@ -1,8 +1,0 @@
-README.md
-pyproject.toml
-src/staffreport/__main__.py
-src/staffreport.egg-info/PKG-INFO
-src/staffreport.egg-info/SOURCES.txt
-src/staffreport.egg-info/dependency_links.txt
-src/staffreport.egg-info/requires.txt
-src/staffreport.egg-info/top_level.txt
