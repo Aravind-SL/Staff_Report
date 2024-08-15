@@ -8,13 +8,12 @@ from zipfile import ZipFile
 
 st.title("Excel File Processor")
 
-# Step 1: File Upload
 uploaded_files = st.file_uploader("Upload Excel files", type=['xlsx', 'xls'], accept_multiple_files=True)
 
 if uploaded_files:
     course_code = []
     marks = []
-    output_path = './output'
+    output_path = './temp_output'
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)
@@ -50,12 +49,10 @@ if uploaded_files:
         between_16_and_30 = len(df[(df['Marks'].astype(float) >= mark_40) & (df['Marks'].astype(float) < mark_75)]) - total_absent
         more_than_30 = len(df[df['Marks'].astype(float) >= mark_75]) - total_absent
 
-        # Creating output Excel file
         output_file_name = f'{os.path.splitext(uploaded_file.name)[0]}_output.xlsx'
         wb = xlsxwriter.Workbook(os.path.join(output_path, output_file_name))
         ws1 = wb.add_worksheet('Student Summary')
 
-        # Format and write data
         title_format = wb.add_format({'bold': True, 'font': 'Times New Roman', 'font_size': 20, 'bg_color': '#FFFF00', 'border': 2, 'align': 'center', 'valign': 'vcenter'})
         header_format = wb.add_format({'bold': True, 'font': 'Times New Roman', 'font_size': 12, 'bg_color': '#B0E0E6', 'border': 2, 'align': 'center', 'valign': 'vcenter'})
         cell_format = wb.add_format({'border': 2, 'align': 'center', 'valign': 'vcenter', 'bold': True})
@@ -83,8 +80,8 @@ if uploaded_files:
 
         mark_less_than = st.number_input(
             f"Enter a mark to filter students who scored less than that mark for file {uploaded_file.name}:",
-            min_value=0.0,  # Changed to float
-            value=float(mark_40)  # Ensure value is a float
+            min_value=0.0,  
+            value=float(mark_40)  
         )
         filtered_less_than_df = df[df['Marks'].astype(float) < mark_less_than]
         filtered_less_than_df = filtered_less_than_df.sort_values(by='Marks', ascending=True)
@@ -97,8 +94,8 @@ if uploaded_files:
 
         mark_more_than = st.number_input(
             f"Enter a mark to filter students who scored more than that mark for file {uploaded_file.name}:",
-            min_value=0.0,  # Changed to float
-            value=float(mark_75)  # Ensure value is a float
+            min_value=0.0, 
+            value=float(mark_75)  
         )
         filtered_more_than_df = df[df['Marks'].astype(float) > mark_more_than]
         filtered_more_than_df = filtered_more_than_df.sort_values(by='Marks', ascending=False)
@@ -110,7 +107,7 @@ if uploaded_files:
                 ws3.write(row_idx, col_idx, cell_data)
 
         wb.close()
-        st.write(f"Results saved successfully to: {output_file_name}")
+        # st.write(f"Results saved successfully to: {output_file_name}")
         output_files.append(output_file_name)
 
         # Add individual output file to zip
@@ -119,7 +116,6 @@ if uploaded_files:
 
     st.success("Processing Complete!")
 
-    # Process the combined output
     data_sheet1 = []
     for idx, file in enumerate(output_files):
         file_path = os.path.join(output_path, file)
@@ -171,17 +167,16 @@ if uploaded_files:
     df_consolidated_sheet2_count = df_consolidated_sheet2[df_consolidated_sheet2['Count'] >= top_n]
     df_consolidated_sheet3_count = df_consolidated_sheet3[df_consolidated_sheet3['Count'] >= top_n]
 
-    output_excel_path = './combined_output_new.xlsx'
+    output_excel_path = os.path.join(output_path, 'combined_excel.xlsx')
+    
     with pd.ExcelWriter(output_excel_path) as writer:
         df_sheet1_transposed.to_excel(writer, sheet_name='Student Summary', index=False)
         df_consolidated_sheet2_count.to_excel(writer, sheet_name='Slow Learners', index=False)
         df_consolidated_sheet3_count.to_excel(writer, sheet_name='Fast Learners', index=False)
 
-    # Add combined output to zip
     with ZipFile(zip_buffer, 'a') as zip_file:
         zip_file.write(output_excel_path, os.path.basename(output_excel_path))
 
-    # Provide download link for zip file
     zip_buffer.seek(0)
     st.download_button(
         label="Download ZIP",
@@ -189,5 +184,12 @@ if uploaded_files:
         file_name="processed_files.zip",
         mime="application/zip"
     )
+    for file_name in os.listdir(output_path):
+        file_path = os.path.join(output_path, file_name)
+        try:
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            st.error(f"Error deleting file {file_path}: {e}")
 
     st.success("Processing Complete!")
