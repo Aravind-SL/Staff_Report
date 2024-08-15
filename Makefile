@@ -1,11 +1,10 @@
-install-dev:
+.PHONY: run
+
+install-dev: $(UIPY)
 	pip install -e .
 
-.PHONY: install-dev
-
-run-dev: install-dev
+run: 
 	python -m staffreport
-
 
 install:
 	pip install .
