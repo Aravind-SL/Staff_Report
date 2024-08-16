@@ -1,3 +1,4 @@
+from .signals import get_signal_emitter
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import  QMainWindow, QFileDialog
 
@@ -26,6 +27,15 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self.statusbar)
 
         self.label()
+
+        get_signal_emitter().status_bar_signal_timeout.connect(
+            self.statusBar().showMessage
+        )
+
+        get_signal_emitter().set_status_message.connect(
+            self.statusBar().showMessage
+        )
+
 
     def open_file(self) -> str:
 

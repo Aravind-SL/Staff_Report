@@ -1,5 +1,6 @@
 import os
 from typing import *
+from model import WorkBookFile
 from PyQt6.QtWidgets import (
     QWidget, 
     QLabel,
@@ -15,7 +16,7 @@ from PyQt6.QtWidgets import (
 class ListFile(QWidget):
     def __init__(self):
         super().__init__()
-        self.add_btn = QPushButton("Some Button")
+        self.add_btn = QPushButton("Add Workbook")
         self.add_btn.setObjectName("addButton")
         self.add_btn.clicked.connect(self.__add_file)
         
@@ -28,7 +29,11 @@ class ListFile(QWidget):
 
 
         layout.addStretch()
-        layout.addWidget(QPushButton("Delete"))
+        self.rmv_btn =QPushButton("Remove") 
+        self.rmv_btn.setObjectName("rmvButton")
+        layout.addWidget(self.rmv_btn)
+        self.rmv_btn.clicked.connect(self.__remove_file)
+
         self.update_files()
         self.setLayout(layout)
 
@@ -38,11 +43,24 @@ class ListFile(QWidget):
     def files(self):
         return self.__files
 
+
+    def __remove_file(self):
+    
+        if self.file_list_widget.selectedIndexes():
+            item = self.file_list_widget.currentIndex()
+
+            self.__files.remove(item.data())
+            self.file_list_widget.takeItem(item.row())
+
+
     def __add_file(self) -> None:
         diag = QFileDialog()
         path = diag.getOpenFileNames(None, 'Open a File', '.',  "Excel Files (*.xls *.xlsx *.xlsm)")
         if path != ([], ''):
-            self.__files |=  set(path[0])
+            self.__files |=  set([
+                WorkBookFile(x, None, None)
+                for x in path[0]
+            ])
             self.update_files()
             self.__on_update(self)
 
@@ -51,7 +69,7 @@ class ListFile(QWidget):
 
     def update_files(self) -> None:
         self.file_list_widget.clear()
-        for it in map(QListWidgetItem, self.__files):
+        for it in map(lambda x: QListWidgetItem(str(x)), self.__files):
             self.file_list_widget.addItem(it)
 
     def on_list_update(self, cb):
