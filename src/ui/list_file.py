@@ -1,6 +1,8 @@
 import os
+import glob
 from typing import *
-from model import WorkBookFile
+from model import CourseFile, ClassReportInput
+from  PyQt6 import QtCore
 from PyQt6.QtWidgets import (
     QWidget, 
     QLabel,
@@ -12,66 +14,93 @@ from PyQt6.QtWidgets import (
     QFileDialog
 )
 
+class ListCourseFiles(QListWidget):
+    def __init__(self, class_report: ClassReportInput):
+        super().__init__()
+        self.addItems(list(map(str, class_report.course_reports_input)))
+        self.setStyleSheet("border: 1px solid;")
 
-class ListFile(QWidget):
+
+
+class ListClass(QWidget):
+    class_added = QtCore.pyqtSignal(ClassReportInput)
+    class_removed = QtCore.pyqtSignal(ClassReportInput)
     def __init__(self):
         super().__init__()
-        self.add_btn = QPushButton("Add Workbook")
+        self.add_btn = QPushButton("Add Class")
         self.add_btn.setObjectName("addButton")
-        self.add_btn.clicked.connect(self.__add_file)
+        self.add_btn.clicked.connect(self.__add_class)
         
         layout = QVBoxLayout()
         layout.addWidget(self.add_btn)
 
-        self.__files =  set({})
-        self.file_list_widget = QListWidget()
-        layout.addWidget(self.file_list_widget)
+        self.__classes =  {}
+        sub_layout = QHBoxLayout()
+        
+        self.class_list = QListWidget()
 
+        self.class_list.itemSelectionChanged.connect(self.__select_class)
+        self.class_list.setMaximumWidth(self.width()//2)
+        sub_layout.addWidget(self.class_list)
+
+        self.file_list_holder = QHBoxLayout()
+        self.file_list = QLabel("Select Class")
+        self.file_list_holder.addWidget(self.file_list)
+
+        sub_layout.addLayout(self.file_list_holder)
+
+        layout.addLayout(sub_layout)
 
         layout.addStretch()
         self.rmv_btn =QPushButton("Remove") 
         self.rmv_btn.setObjectName("rmvButton")
         layout.addWidget(self.rmv_btn)
-        self.rmv_btn.clicked.connect(self.__remove_file)
+        self.rmv_btn.clicked.connect(self.__remove_class)
 
-        self.update_files()
+        self.update_classes()
         self.setLayout(layout)
 
-        self.__on_update = lambda self : None 
-
     @property
-    def files(self):
-        return self.__files
+    def classes(self):
+        return self.__classes
+
+    def __select_class(self, unset=False):
+        if self.class_list.selectedIndexes() and not unset:
+            item = self.class_list.currentIndex()
+            cls = self.__classes[item.data()]
+            w = ListCourseFiles(cls)
+        else:
+            w = QLabel("Select Class")
+        self.file_list_holder.replaceWidget(self.file_list , w)
+        self.file_list.deleteLater()
+        self.file_list = w
 
 
-    def __remove_file(self):
-    
-        if self.file_list_widget.selectedIndexes():
-            item = self.file_list_widget.currentIndex()
+    def __remove_class(self):
+        if self.class_list.selectedIndexes():
+            item = self.class_list.currentIndex()
+            self.class_list.selectionModel().clear()
+            self.class_removed.emit(self.__classes[item.data()])
+            del self.__classes[item.data()]
+            self.class_list.takeItem(item.row())
 
-            self.__files.remove(item.data())
-            self.file_list_widget.takeItem(item.row())
 
-
-    def __add_file(self) -> None:
+    def __add_class(self) -> None:
         diag = QFileDialog()
-        path = diag.getOpenFileNames(None, 'Open a File', '.',  "Excel Files (*.xls *.xlsx *.xlsm)")
-        if path != ([], ''):
-            self.__files |=  set([
-                WorkBookFile(x, None, None)
-                for x in path[0]
+        path = diag.getExistingDirectory(None, 'Select Class', '.')
+        if path is not None and path != '':
+
+            files =  set([
+                CourseFile(x, None, None)
+                for x in glob.glob(f"{path}/*.xlsx")
             ])
-            self.update_files()
-            self.__on_update(self)
+            name = path.split('/')[-1]
+            self.__classes[name] = ClassReportInput(name, files)
+            self.update_classes()
 
-    def get_files(self) -> List[Union[str, os.PathLike]]:
-        return self.__files
+            self.class_added.emit(self.__classes[name])
 
-    def update_files(self) -> None:
-        self.file_list_widget.clear()
-        for it in map(lambda x: QListWidgetItem(str(x)), self.__files):
-            self.file_list_widget.addItem(it)
-
-    def on_list_update(self, cb):
-        self.__on_update = cb
-
+    def update_classes(self) -> None:
+        self.class_list.clear()
+        for it in map(QListWidgetItem, self.__classes.keys()):
+            self.class_list.addItem(it)

@@ -2,7 +2,7 @@ import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout
 
 from .main_window import MainWindow
-from .list_file import ListFile
+from .list_file import ListClass
 from .variables_editor import VariableEditor
 
 
@@ -11,18 +11,18 @@ class App():
         self.app = QApplication(sys.argv)
         self.window = MainWindow()
 
-        self.list_file = ListFile()
+        self.list_class = ListClass()
         self.window.show()
 
         vlayout = QVBoxLayout(self.window.centralWidget())
-        vlayout.addWidget(self.list_file)
+        vlayout.addWidget(self.list_class)
 
         self.editor = VariableEditor()
         vlayout.addWidget(self.editor)
         
 
         
-        self.list_file.on_list_update(lambda li: self.editor.update_tabs(li.files))
+        self.list_class.class_added.connect(self.editor.add_class)
 
 
 
