@@ -4,10 +4,13 @@ import streamlit as st
 from io import BytesIO
 from zipfile import ZipFile
 import xlsxwriter
+import math
 
 # Function to process each uploaded file
 def process_file(uploaded_file, marks):
-    df = pd.read_excel(uploaded_file, skiprows=10)
+    custom_headers = ['S.No.', 'Roll No.', 'Student Name', 'Marks']
+    df = pd.read_excel(uploaded_file, skiprows=10, names=custom_headers, usecols="A:D") 
+    print(df.head(20))
     if 'Unnamed: 4' in df:
         df = df.drop(['Unnamed: 4'], axis=1)
     df = df.dropna()
@@ -15,11 +18,12 @@ def process_file(uploaded_file, marks):
     course_detail = pd.read_excel(uploaded_file, nrows=10, header=None).iloc[:10, 1:].fillna('').values.tolist()
     mark_40 = marks * 0.4
     mark_75 = marks * 0.75
-
+    print(df.head(20))
     total_students = len(df)
     total_students_appeared = len(df[df['Marks'] != 'A'])
     total_absent = total_students - total_students_appeared
-    avg_marks = df[df['Marks'] != 'A']['Marks'].astype(float).mean().round(2)
+    avg_marks = df[df['Marks'] != 'A']['Marks'].astype(float).mean()
+    avg_marks = round(avg_marks, 2)
     df = df.replace('A', 0)
     less_than_16 = len(df[df['Marks'].astype(float) < mark_40]) - total_absent
     between_16_and_30 = len(df[(df['Marks'].astype(float) >= mark_40) & (df['Marks'].astype(float) < mark_75)]) - total_absent
@@ -52,10 +56,17 @@ def create_summary_sheet(wb, course_detail, summary_data):
         ["Between 40% - 75%", summary_data['between_16_and_30']],
         ["More than 75%", summary_data['more_than_30']]
     ]
+    
+    # Loop through the results and check for NaN or Infinity
     for i, (attribute, value) in enumerate(results, start=13):
         ws.write(i, 0, attribute, cell_format)
+        
+        # Check if value is NaN or Infinity, replace with 'N/A' or 0
+        if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+            value = 'N/A'  # or use 0 if you prefer a numeric value
+        
         ws.write(i, 1, value, cell_format)
-
+    
 # Function to create learner sheets
 def create_learner_sheet(wb, sheet_name, df, mark, comparison, header_format):
     filtered_df = df[df['Marks'].astype(float).apply(comparison, args=(mark,))]
