@@ -10,7 +10,6 @@ import math
 def process_file(uploaded_file, marks):
     custom_headers = ['S.No.', 'Roll No.', 'Student Name', 'Marks']
     df = pd.read_excel(uploaded_file, skiprows=10, names=custom_headers, usecols="A:D") 
-    print(df.head(20))
     if 'Unnamed: 4' in df:
         df = df.drop(['Unnamed: 4'], axis=1)
     df = df.dropna()
@@ -18,16 +17,15 @@ def process_file(uploaded_file, marks):
     course_detail = pd.read_excel(uploaded_file, nrows=10, header=None).iloc[:10, 1:].fillna('').values.tolist()
     mark_40 = marks * 0.4
     mark_75 = marks * 0.75
-    print(df.head(20))
     total_students = len(df)
     total_students_appeared = len(df[df['Marks'] != 'A'])
     total_absent = total_students - total_students_appeared
-    avg_marks = df[df['Marks'] != 'A']['Marks'].astype(float).mean()
+    df=df[df['Marks']!='A']
+    avg_marks = df['Marks'].astype(float).mean()
     avg_marks = round(avg_marks, 2)
-    df = df.replace('A', 0)
-    less_than_16 = len(df[df['Marks'].astype(float) < mark_40]) - total_absent
-    between_16_and_30 = len(df[(df['Marks'].astype(float) >= mark_40) & (df['Marks'].astype(float) < mark_75)]) - total_absent
-    more_than_30 = len(df[df['Marks'].astype(float) >= mark_75]) - total_absent
+    less_than_16 = len(df[df['Marks'].astype(float) < mark_40]) 
+    between_16_and_30 = len(df[(df['Marks'].astype(float) >= mark_40) & (df['Marks'].astype(float) < mark_75)]) 
+    more_than_30 = len(df[df['Marks'].astype(float) >= mark_75]) 
 
     return df, course_detail, total_students, total_students_appeared, total_absent, avg_marks, less_than_16, between_16_and_30, more_than_30, mark_40, mark_75
 
@@ -218,21 +216,38 @@ zip_file_name = st.text_input("Enter the name for the zip file: ")
 output_path = "processed_files"
 
 if uploaded_files:
+    # Process the uploaded files
     output_files, course_code = process_uploaded_files(uploaded_files, output_path)
     consolidated_file_path = generate_consolidated_file(output_files, course_code, output_path, top_n)
 
+    # Create an in-memory zip buffer to store the files before saving to disk
     zip_buffer = BytesIO()
     with ZipFile(zip_buffer, "a") as zip_file:
         for output_file in output_files + [consolidated_file_path]:
             zip_file.write(output_file, arcname=os.path.basename(output_file))
-    
-    # Delete files after zipping
+
+    # Move the buffer pointer to the start
+    zip_buffer.seek(0)
+
+    if st.button("Save Zip File"):
+        # Define the folder where the zip file will be saved
+        zip_folder = "/home/aravind/Projects/Staff_Report/zip_files"
+        
+        # Create the directory if it doesn't exist
+        if not os.path.exists(zip_folder):
+            os.makedirs(zip_folder)
+
+        # Save the zip file to the specified location
+        zip_file_path = os.path.join(zip_folder, f"{zip_file_name}.zip")
+        with open(zip_file_path, "wb") as f:
+            f.write(zip_buffer.getvalue())
+
+        st.success(f"Zip file saved at: {zip_file_path}")
+
+    # Delete temporary files after zipping
     for file_path in output_files + [consolidated_file_path]:
         try:
             if os.path.isfile(file_path):
                 os.remove(file_path)
         except Exception as e:
             st.error(f"Error deleting file {file_path}: {e}")
-    
-    zip_buffer.seek(0)
-    st.download_button(label="Download All Files in Zip", data=zip_buffer, file_name=f"{zip_file_name}.zip", mime="application/zip")
