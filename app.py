@@ -24,8 +24,8 @@ def process_file(uploaded_file, marks):
     avg_marks = df['Marks'].astype(float).mean()
     avg_marks = round(avg_marks, 2)
     less_than_16 = len(df[df['Marks'].astype(float) < mark_40]) 
-    between_16_and_30 = len(df[(df['Marks'].astype(float) >= mark_40) & (df['Marks'].astype(float) < mark_75)]) 
-    more_than_30 = len(df[df['Marks'].astype(float) >= mark_75]) 
+    between_16_and_30 = len(df[(df['Marks'].astype(float) >= mark_40) & (df['Marks'].astype(float) <= mark_75)]) 
+    more_than_30 = len(df[df['Marks'].astype(float) > mark_75]) 
 
     return df, course_detail, total_students, total_students_appeared, total_absent, avg_marks, less_than_16, between_16_and_30, more_than_30, mark_40, mark_75
 
@@ -55,13 +55,11 @@ def create_summary_sheet(wb, course_detail, summary_data):
         ["More than 75%", summary_data['more_than_30']]
     ]
     
-    # Loop through the results and check for NaN or Infinity
     for i, (attribute, value) in enumerate(results, start=13):
         ws.write(i, 0, attribute, cell_format)
         
-        # Check if value is NaN or Infinity, replace with 'N/A' or 0
         if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
-            value = 'N/A'  # or use 0 if you prefer a numeric value
+            value = 'N/A'  
         
         ws.write(i, 1, value, cell_format)
     
@@ -216,35 +214,27 @@ zip_file_name = st.text_input("Enter the name for the zip file: ")
 output_path = "processed_files"
 
 if uploaded_files:
-    # Process the uploaded files
     output_files, course_code = process_uploaded_files(uploaded_files, output_path)
     consolidated_file_path = generate_consolidated_file(output_files, course_code, output_path, top_n)
 
-    # Create an in-memory zip buffer to store the files before saving to disk
     zip_buffer = BytesIO()
     with ZipFile(zip_buffer, "a") as zip_file:
         for output_file in output_files + [consolidated_file_path]:
             zip_file.write(output_file, arcname=os.path.basename(output_file))
 
-    # Move the buffer pointer to the start
     zip_buffer.seek(0)
 
     if st.button("Save Zip File"):
-        # Define the folder where the zip file will be saved
         zip_folder = "/home/aravind/Projects/Staff_Report/zip_files"
         
-        # Create the directory if it doesn't exist
         if not os.path.exists(zip_folder):
             os.makedirs(zip_folder)
 
-        # Save the zip file to the specified location
         zip_file_path = os.path.join(zip_folder, f"{zip_file_name}.zip")
         with open(zip_file_path, "wb") as f:
             f.write(zip_buffer.getvalue())
 
         st.success(f"Zip file saved at: {zip_file_path}")
-
-    # Delete temporary files after zipping
     for file_path in output_files + [consolidated_file_path]:
         try:
             if os.path.isfile(file_path):
