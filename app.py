@@ -12,15 +12,16 @@ def process_file(uploaded_file, marks):
     df = pd.read_excel(uploaded_file, skiprows=10, names=custom_headers, usecols="A:D") 
     if 'Unnamed: 4' in df:
         df = df.drop(['Unnamed: 4'], axis=1)
-    df = df.dropna()
 
+    df = df.dropna()
     course_detail = pd.read_excel(uploaded_file, nrows=10, header=None).iloc[:10, 1:].fillna('').values.tolist()
     mark_40 = marks * 0.4
     mark_75 = marks * 0.75
     total_students = len(df)
-    total_students_appeared = len(df[df['Marks'] != 'A'])
+    # total_students_appeared = len(df[df['Marks'] != 'A'])
+    total_students_appeared = len(df[~df['Marks'].isin(['A', 'a', ' ']) ])
     total_absent = total_students - total_students_appeared
-    df=df[df['Marks']!='A']
+    df = df[~df['Marks'].isin(['A', 'a', ' '])]
     avg_marks = df['Marks'].astype(float).mean()
     avg_marks = round(avg_marks, 2)
     less_than_16 = len(df[df['Marks'].astype(float) < mark_40]) 
